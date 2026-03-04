@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Focus Extension</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Focus Extension</h1>
+
+      <section id="setup-view">
+        <label>
+          Current task
+          <input id="task-input" type="text" maxlength="120" placeholder="e.g. Write project proposal" />
+        </label>
+
+        <label>
+          Duration (minutes)
+          <input id="duration-input" type="number" min="1" max="300" value="25" />
+        </label>
+
+        <button id="start-btn">Start Session</button>
+      </section>
+
+      <section id="active-view" class="hidden">
+        <p><strong>Task:</strong> <span id="active-task"></span></p>
+        <p><strong>Time remaining:</strong> <span id="remaining-time"></span></p>
+        <button id="end-btn" class="danger">End Session</button>
+      </section>
+
+      <p id="status" role="status"></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: Arial, sans-serif;
+}
+
+.card {
+  width: min(92vw, 640px);
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+#status {
+  margin-top: 10px;
+  min-height: 20px;
+  color: #fca5a5;
+}
