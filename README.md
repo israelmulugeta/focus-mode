@@ -1,12 +1,14 @@
 # Focus Extension (Manifest V3)
 
-A Chrome extension that starts fixed-duration focus sessions, grayscales pages, and blocks distracting domains until the session ends.
+Focus Extension helps users stay on task with timed focus sessions, grayscale mode, and both default + custom blocked sites.
 
 ## Folder structure
 
 ```text
 focus-mode/
 ├── manifest.json
+├── domains.js
+├── utils.js
 ├── background.js
 ├── content.js
 ├── popup.html
@@ -20,24 +22,64 @@ focus-mode/
 
 ## How it works
 
-- `popup.*` starts/ends sessions and shows task + remaining time.
-- `background.js` stores session state in `chrome.storage.local`, restores on startup, sets an alarm for session expiry, and redirects blocked domains to `focus.html`.
-- `content.js` applies/removes grayscale based on active session state.
-- `focus.*` shows the blocking screen with current task and options to go back or end session.
+### 1) Focus sessions
 
-## Load & test in Chrome
+- The popup lets users enter a task and session duration in minutes.
+- Starting a session stores this state in `chrome.storage.local`:
+
+```js
+{
+  isFocusActive: true,
+  currentTask: '...',
+  sessionStartTime: 1710000000000,
+  sessionDuration: 25,
+  settings: { grayscaleEnabled: true },
+  userBlockedDomains: []
+}
+```
+
+- The background service worker schedules an alarm for session expiration.
+- If a user visits a blocked URL while focus is active, they are redirected to `focus.html?blockedUrl=...`.
+- Session state persists across browser restarts.
+
+### 2) Grayscale toggle
+
+- Popup includes **Enable Grayscale** checkbox.
+- Toggling updates storage and instantly broadcasts state to all open tabs.
+- `content.js` applies/removes:
+
+```css
+html { filter: grayscale(100%) !important; }
+```
+
+### 3) Custom blocked sites
+
+- Popup includes input + list for custom blocked patterns.
+- Users can add/remove domains or host/path entries (for example, `example.com` or `example.com/feed`).
+- Updates are persisted immediately and enforced during active sessions.
+
+### Blocking behavior details
+
+- Uses default distracting domains from `domains.js` plus user patterns.
+- Applies matching on host and optional path prefix.
+- Ignores unsupported/unsafe URLs (`chrome://`, `chrome-extension://`, `about:`).
+- Prevents redirect loops by skipping `focus.html`.
+
+## Load in Chrome
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and choose this folder (`/workspace/focus-mode`).
-4. Open the extension popup.
-5. Enter a task and duration (minutes), then click **Start Session**.
-6. Visit a blocked domain (e.g., youtube.com) and confirm redirect to `focus.html`.
-7. Confirm grayscale applies on normal pages.
-8. Click **End Session** from popup or `focus.html` and verify access + normal colors return.
-9. Restart Chrome and confirm active sessions persist and still enforce blocking.
+3. Click **Load unpacked**.
+4. Select this folder: `/workspace/focus-mode`.
+5. Pin the extension (optional) and open the popup.
 
-## Blocked domain list
+## Step-by-step testing guide
 
-- YouTube, Twitter/X, Instagram, Facebook, TikTok, Reddit
-- News sites: Google News, NYTimes, Washington Post, CNN, Fox News, BBC, The Guardian, WSJ, Bloomberg
+1. In popup, enter task + duration and click **Start Session**.
+2. Try opening a default blocked site (e.g., `youtube.com`) and verify redirect to `focus.html`.
+3. In popup, enable/disable **Enable Grayscale** and verify all tabs update instantly.
+4. Add a custom blocked site (e.g., `github.com/explore`) and verify it appears in the list.
+5. While session is active, navigate to the custom blocked site and verify redirection.
+6. Click **End Focus Session** in popup (or on `focus.html`) and verify access is restored.
+7. Start a session, close/reopen Chrome, and verify the session remains active until timeout.
+

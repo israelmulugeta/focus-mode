@@ -13,8 +13,8 @@ function removeGrayscaleStyle() {
   if (style) style.remove();
 }
 
-function applySessionVisuals({ isFocusActive, grayscaleEnabled }) {
-  if (isFocusActive && grayscaleEnabled) {
+function applySessionVisuals({ grayscaleEnabled }) {
+  if (grayscaleEnabled) {
     ensureGrayscaleStyle();
   } else {
     removeGrayscaleStyle();
@@ -31,7 +31,6 @@ chrome.runtime.onMessage.addListener((message) => {
   const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION_STATE' });
   if (response?.ok) {
     applySessionVisuals({
-      isFocusActive: response.state?.isFocusActive,
       grayscaleEnabled: response.state?.settings?.grayscaleEnabled
     });
   }

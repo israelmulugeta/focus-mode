@@ -1,0 +1,19 @@
+export const DEFAULT_DISTRACTING_DOMAINS = [
+  'youtube.com',
+  'youtu.be',
+  'twitter.com',
+  'x.com',
+  'instagram.com',
+  'facebook.com',
+  'tiktok.com',
+  'reddit.com',
+  'news.google.com',
+  'nytimes.com',
+  'washingtonpost.com',
+  'cnn.com',
+  'foxnews.com',
+  'bbc.com',
+  'theguardian.com',
+  'wsj.com',
+  'bloomberg.com'
+];

@@ -1,80 +1,74 @@
-const FOCUS_ALARM = 'focus-session-end';
+import { DEFAULT_DISTRACTING_DOMAINS } from './domains.js';
+import {
+  DEFAULT_STATE,
+  FOCUS_ALARM,
+  dedupePatterns,
+  getFocusPageUrl,
+  getSessionRemainingMs,
+  getSessionState,
+  isIgnoredUrl,
+  isSupportedHttpUrl,
+  normalizeBlockPattern,
+  urlMatchesPattern
+} from './utils.js';
 
-const DISTRACTING_DOMAINS = [
-  'youtube.com',
-  'youtu.be',
-  'twitter.com',
-  'x.com',
-  'instagram.com',
-  'facebook.com',
-  'tiktok.com',
-  'reddit.com',
-  'news.google.com',
-  'nytimes.com',
-  'washingtonpost.com',
-  'cnn.com',
-  'foxnews.com',
-  'bbc.com',
-  'theguardian.com',
-  'wsj.com',
-  'bloomberg.com'
-];
-
-const DEFAULT_STATE = {
-  isFocusActive: false,
-  currentTask: '',
-  sessionStartTime: null,
-  sessionDuration: 0,
-  settings: { grayscaleEnabled: true }
-};
-
-function getFocusPageUrl(blockedUrl = '') {
-  const url = new URL(chrome.runtime.getURL('focus.html'));
-  if (blockedUrl) {
-    url.searchParams.set('blockedUrl', blockedUrl);
-  }
-  return url.toString();
+function shouldApplyGrayscale(state) {
+  return Boolean(state?.settings?.grayscaleEnabled);
 }
 
-function isSupportedHttpUrl(rawUrl) {
-  if (!rawUrl) return false;
-  try {
-    const parsed = new URL(rawUrl);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function isBlockedDomain(rawUrl) {
+function isBlockedUrl(rawUrl, state) {
   if (!isSupportedHttpUrl(rawUrl)) return false;
-  const { hostname } = new URL(rawUrl);
-  return DISTRACTING_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+
+  const blockPatterns = [...DEFAULT_DISTRACTING_DOMAINS, ...(state.userBlockedDomains || [])];
+  return blockPatterns.some((pattern) => urlMatchesPattern(rawUrl, pattern));
 }
 
-async function getSessionState() {
-  const state = await chrome.storage.local.get(DEFAULT_STATE);
-  return {
-    ...DEFAULT_STATE,
-    ...state,
-    settings: {
-      ...DEFAULT_STATE.settings,
-      ...(state.settings || {})
-    }
-  };
+async function notifyAllTabsSessionState() {
+  const state = await getSessionState();
+  const tabs = await chrome.tabs.query({});
+
+  await Promise.all(
+    tabs
+      .filter((tab) => tab.id && tab.url && !isIgnoredUrl(tab.url))
+      .map((tab) =>
+        chrome.tabs
+          .sendMessage(tab.id, {
+            type: 'SESSION_STATE_CHANGED',
+            payload: {
+              isFocusActive: state.isFocusActive,
+              grayscaleEnabled: shouldApplyGrayscale(state)
+            }
+          })
+          .catch(() => undefined)
+      )
+  );
+}
+
+async function redirectBlockedTabs() {
+  const state = await getSessionState();
+  if (!state.isFocusActive) return;
+
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(
+    tabs
+      .filter((tab) => tab.id && tab.url)
+      .map((tab) => maybeRedirectTab(tab.id, tab.url, state))
+  );
 }
 
 async function clearSessionState() {
-  await chrome.storage.local.set({ ...DEFAULT_STATE });
+  const existing = await getSessionState();
+  await chrome.storage.local.set({
+    ...DEFAULT_STATE,
+    settings: {
+      ...DEFAULT_STATE.settings,
+      grayscaleEnabled: existing.settings?.grayscaleEnabled ?? DEFAULT_STATE.settings.grayscaleEnabled
+    },
+    userBlockedDomains: existing.userBlockedDomains || []
+  });
+
   await chrome.alarms.clear(FOCUS_ALARM);
   await notifyAllTabsSessionState();
-}
-
-function getSessionRemainingMs(state) {
-  if (!state.isFocusActive || !state.sessionStartTime || !state.sessionDuration) return 0;
-  const durationMs = state.sessionDuration * 60 * 1000;
-  const elapsedMs = Date.now() - state.sessionStartTime;
-  return Math.max(0, durationMs - elapsedMs);
 }
 
 async function enforceSessionTimeout() {
@@ -90,46 +84,21 @@ async function enforceSessionTimeout() {
   await chrome.alarms.create(FOCUS_ALARM, { when: Date.now() + remaining });
 }
 
-async function notifyAllTabsSessionState() {
-  const state = await getSessionState();
-  const tabs = await chrome.tabs.query({});
-
-  await Promise.all(
-    tabs
-      .filter((tab) => tab.id && tab.url && isSupportedHttpUrl(tab.url))
-      .map((tab) =>
-        chrome.tabs
-          .sendMessage(tab.id, {
-            type: 'SESSION_STATE_CHANGED',
-            payload: {
-              isFocusActive: state.isFocusActive,
-              grayscaleEnabled: state.settings?.grayscaleEnabled
-            }
-          })
-          .catch(() => undefined)
-      )
-  );
-}
-
-async function maybeRedirectTab(tabId, rawUrl) {
+async function maybeRedirectTab(tabId, rawUrl, providedState = null) {
   if (!tabId || !rawUrl) return;
-  const state = await getSessionState();
-  if (!state.isFocusActive) return;
-
-  if (!isSupportedHttpUrl(rawUrl)) return;
+  if (isIgnoredUrl(rawUrl)) return;
   if (rawUrl.startsWith(chrome.runtime.getURL('focus.html'))) return;
 
-  if (isBlockedDomain(rawUrl)) {
+  const state = providedState || (await getSessionState());
+  if (!state.isFocusActive) return;
+
+  if (isBlockedUrl(rawUrl, state)) {
     await chrome.tabs.update(tabId, { url: getFocusPageUrl(rawUrl) });
   }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
   const existing = await chrome.storage.local.get(Object.keys(DEFAULT_STATE));
-  if (Object.keys(existing).length === 0) {
-    await chrome.storage.local.set({ ...DEFAULT_STATE });
-    return;
-  }
 
   await chrome.storage.local.set({
     ...DEFAULT_STATE,
@@ -137,13 +106,15 @@ chrome.runtime.onInstalled.addListener(async () => {
     settings: {
       ...DEFAULT_STATE.settings,
       ...(existing.settings || {})
-    }
+    },
+    userBlockedDomains: dedupePatterns(existing.userBlockedDomains || [])
   });
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await enforceSessionTimeout();
   await notifyAllTabsSessionState();
+  await redirectBlockedTabs();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -177,6 +148,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sendResponse({ ok: true, state: resetState, remainingMs: 0 });
         return;
       }
+
       sendResponse({ ok: true, state, remainingMs });
       return;
     }
@@ -190,17 +162,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return;
       }
 
+      const prev = await getSessionState();
       const nextState = {
+        ...prev,
         isFocusActive: true,
         currentTask: task,
         sessionStartTime: Date.now(),
-        sessionDuration: duration,
-        settings: { grayscaleEnabled: true }
+        sessionDuration: duration
       };
 
       await chrome.storage.local.set(nextState);
       await enforceSessionTimeout();
       await notifyAllTabsSessionState();
+      await redirectBlockedTabs();
+
       sendResponse({ ok: true, state: nextState, remainingMs: duration * 60 * 1000 });
       return;
     }
@@ -209,6 +184,57 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       await clearSessionState();
       const state = await getSessionState();
       sendResponse({ ok: true, state, remainingMs: 0 });
+      return;
+    }
+
+    if (message?.type === 'SET_GRAYSCALE') {
+      const enabled = Boolean(message.payload?.enabled);
+      const state = await getSessionState();
+      const nextState = {
+        ...state,
+        settings: {
+          ...state.settings,
+          grayscaleEnabled: enabled
+        }
+      };
+
+      await chrome.storage.local.set(nextState);
+      await notifyAllTabsSessionState();
+      sendResponse({ ok: true, state: nextState });
+      return;
+    }
+
+    if (message?.type === 'ADD_BLOCKED_SITE') {
+      const rawValue = message.payload?.value;
+      const normalized = normalizeBlockPattern(rawValue);
+
+      if (!normalized) {
+        sendResponse({ ok: false, error: 'Please enter a valid domain or URL pattern.' });
+        return;
+      }
+
+      const state = await getSessionState();
+      const nextState = {
+        ...state,
+        userBlockedDomains: dedupePatterns([...(state.userBlockedDomains || []), normalized])
+      };
+
+      await chrome.storage.local.set(nextState);
+      await redirectBlockedTabs();
+      sendResponse({ ok: true, state: nextState });
+      return;
+    }
+
+    if (message?.type === 'REMOVE_BLOCKED_SITE') {
+      const normalized = normalizeBlockPattern(message.payload?.value);
+      const state = await getSessionState();
+      const nextState = {
+        ...state,
+        userBlockedDomains: (state.userBlockedDomains || []).filter((item) => item !== normalized)
+      };
+
+      await chrome.storage.local.set(nextState);
+      sendResponse({ ok: true, state: nextState });
       return;
     }
 

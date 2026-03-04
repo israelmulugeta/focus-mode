@@ -1,9 +1,11 @@
 const taskEl = document.getElementById('task');
+const blockedUrlEl = document.getElementById('blocked-url');
 const statusEl = document.getElementById('status');
 const goBackBtn = document.getElementById('go-back');
 const endSessionBtn = document.getElementById('end-session');
 
 const blockedUrl = new URL(window.location.href).searchParams.get('blockedUrl') || '';
+blockedUrlEl.textContent = blockedUrl || 'Unknown';
 
 function setStatus(message = '') {
   statusEl.textContent = message;
@@ -20,7 +22,7 @@ goBackBtn.addEventListener('click', () => {
     return;
   }
 
-  window.location.href = 'about:blank';
+  window.location.href = 'https://www.google.com';
 });
 
 endSessionBtn.addEventListener('click', async () => {
