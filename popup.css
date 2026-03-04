@@ -6,13 +6,26 @@ body {
 }
 
 .container {
-  width: 320px;
+  width: 360px;
   padding: 14px;
 }
 
 h1 {
   margin: 0 0 12px;
   font-size: 18px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.panel {
+  border: 1px solid #dbe1ea;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: white;
 }
 
 label {
@@ -41,8 +54,63 @@ button {
   cursor: pointer;
 }
 
+button.secondary {
+  width: auto;
+  padding: 8px 12px;
+}
+
+button.remove-btn {
+  width: auto;
+  background: #e11d48;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
 button.danger {
   background: #dc2626;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.row input {
+  margin-top: 0;
+  flex: 1;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.checkbox-label input {
+  width: auto;
+  margin-top: 0;
+}
+
+.site-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.site-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  gap: 8px;
 }
 
 .hidden {

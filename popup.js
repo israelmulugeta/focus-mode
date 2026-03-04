@@ -6,6 +6,10 @@ const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
 const activeTask = document.getElementById('active-task');
 const remainingTime = document.getElementById('remaining-time');
+const grayscaleToggle = document.getElementById('grayscale-toggle');
+const blockedSiteInput = document.getElementById('blocked-site-input');
+const addBlockedSiteBtn = document.getElementById('add-blocked-site-btn');
+const blockedSitesList = document.getElementById('blocked-sites-list');
 const statusEl = document.getElementById('status');
 
 let countdownTimer = null;
@@ -34,6 +38,47 @@ async function fetchState() {
     throw new Error(response?.error || 'Unable to load state.');
   }
   return response;
+}
+
+function renderBlockedSites(sites = []) {
+  blockedSitesList.innerHTML = '';
+
+  if (!sites.length) {
+    const empty = document.createElement('li');
+    empty.className = 'site-item';
+    empty.textContent = 'No custom blocked sites yet.';
+    blockedSitesList.appendChild(empty);
+    return;
+  }
+
+  sites.forEach((site) => {
+    const item = document.createElement('li');
+    item.className = 'site-item';
+
+    const label = document.createElement('span');
+    label.textContent = site;
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'remove-btn';
+    removeButton.textContent = 'Remove';
+    removeButton.addEventListener('click', async () => {
+      const response = await chrome.runtime.sendMessage({
+        type: 'REMOVE_BLOCKED_SITE',
+        payload: { value: site }
+      });
+
+      if (!response?.ok) {
+        setStatus(response?.error || 'Unable to remove blocked site.');
+        return;
+      }
+
+      renderBlockedSites(response.state.userBlockedDomains || []);
+      setStatus('Blocked site removed.');
+    });
+
+    item.append(label, removeButton);
+    blockedSitesList.appendChild(item);
+  });
 }
 
 function renderActiveState(state) {
@@ -66,11 +111,15 @@ function renderInactiveState() {
 
 async function initialize() {
   const { state } = await fetchState();
+
   if (state.isFocusActive) {
     renderActiveState(state);
   } else {
     renderInactiveState();
   }
+
+  grayscaleToggle.checked = Boolean(state.settings?.grayscaleEnabled);
+  renderBlockedSites(state.userBlockedDomains || []);
 }
 
 startBtn.addEventListener('click', async () => {
@@ -99,6 +148,7 @@ startBtn.addEventListener('click', async () => {
   }
 
   renderActiveState(response.state);
+  renderBlockedSites(response.state.userBlockedDomains || []);
 });
 
 endBtn.addEventListener('click', async () => {
@@ -110,6 +160,43 @@ endBtn.addEventListener('click', async () => {
 
   setStatus('Session ended.');
   renderInactiveState();
+});
+
+grayscaleToggle.addEventListener('change', async () => {
+  const response = await chrome.runtime.sendMessage({
+    type: 'SET_GRAYSCALE',
+    payload: { enabled: grayscaleToggle.checked }
+  });
+
+  if (!response?.ok) {
+    setStatus(response?.error || 'Unable to update grayscale setting.');
+    return;
+  }
+
+  setStatus('Grayscale preference updated.');
+});
+
+addBlockedSiteBtn.addEventListener('click', async () => {
+  const value = blockedSiteInput.value.trim();
+
+  if (!value) {
+    setStatus('Enter a domain or URL pattern to block.');
+    return;
+  }
+
+  const response = await chrome.runtime.sendMessage({
+    type: 'ADD_BLOCKED_SITE',
+    payload: { value }
+  });
+
+  if (!response?.ok) {
+    setStatus(response?.error || 'Unable to add blocked site.');
+    return;
+  }
+
+  blockedSiteInput.value = '';
+  renderBlockedSites(response.state.userBlockedDomains || []);
+  setStatus('Blocked site added.');
 });
 
 initialize().catch((error) => {
