@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stay Focused</title>
+    <link rel="stylesheet" href="focus.css" />
+  </head>
+  <body>
+    <main class="card">
+      <h1>🚫 This site is blocked during focus mode</h1>
+      <p><strong>Current task:</strong> <span id="task"></span></p>
+      <p>Finish your focus session or end it manually to access distracting websites.</p>
+
+      <div class="actions">
+        <button id="go-back">Go Back</button>
+        <button id="end-session" class="danger">End Focus Session</button>
+      </div>
+      <p id="status" role="status"></p>
+    </main>
+
+    <script src="focus.js"></script>
+  </body>
+</html>
