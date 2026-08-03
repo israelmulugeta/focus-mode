@@ -1,58 +1,62 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Focus Extension</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <main class="container">
-      <h1>Focus Extension</h1>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QA Test Case TSV Converter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">QA</span><div><h1>TSV Converter</h1><p>TXT test cases → spreadsheet-ready TSV</p></div></div>
+      <div class="toolbar" role="toolbar" aria-label="Input actions">
+        <button id="uploadBtn" class="primary">Upload TXT File</button>
+        <button id="pasteBtn">Paste Text</button>
+        <button id="clearBtn">Clear</button>
+        <button id="convertBtn" class="accent">Convert</button>
+        <button id="themeBtn" title="Toggle dark or light mode">☾</button>
+      </div>
+      <input id="fileInput" type="file" accept=".txt,text/plain" hidden>
+    </header>
 
-      <section class="panel">
-        <h2>Focus Session</h2>
-        <div id="setup-view">
-          <label>
-            Current task
-            <input id="task-input" type="text" maxlength="120" placeholder="e.g. Write project proposal" />
-          </label>
-
-          <label>
-            Duration (minutes)
-            <input id="duration-input" type="number" min="1" max="300" value="25" />
-          </label>
-
-          <button id="start-btn">Start Session</button>
-        </div>
-
-        <div id="active-view" class="hidden">
-          <p><strong>Task:</strong> <span id="active-task"></span></p>
-          <p><strong>Time remaining:</strong> <span id="remaining-time"></span></p>
-          <button id="end-btn" class="danger">End Session</button>
-        </div>
+    <main>
+      <section id="dropZone" class="drop-zone" tabindex="0" aria-label="Drag and drop text file or click to browse">
+        <div class="drop-icon">⇪</div>
+        <h2>Drop a .txt file here</h2>
+        <p>or click to browse, paste manually, or press <kbd>Ctrl</kbd> + <kbd>O</kbd></p>
+        <div id="fileMeta" class="file-meta">No file selected</div>
       </section>
 
-      <section class="panel">
-        <h2>Grayscale</h2>
-        <label class="checkbox-label">
-          <input id="grayscale-toggle" type="checkbox" />
-          Enable Grayscale
-        </label>
+      <section id="pastePanel" class="paste-panel" hidden>
+        <label for="manualInput">Paste QA test case text</label>
+        <textarea id="manualInput" spellcheck="false" placeholder="TC-1491 Resident Binder Export — Open record snapshot...&#10;&#10;1. Click Open record snapshot...&#10;&#10;A PDF opens...&#10;&#10;P1"></textarea>
       </section>
 
-      <section class="panel">
-        <h2>Custom Blocked Sites</h2>
-        <div class="row">
-          <input id="blocked-site-input" type="text" placeholder="example.com or example.com/path" />
-          <button id="add-blocked-site-btn" class="secondary">Add</button>
+      <section class="status-card">
+        <div class="progress-row"><span id="progressText">Ready.</span><div class="progress"><div id="progressBar"></div></div></div>
+        <div id="validationGrid" class="validation-grid" aria-live="polite"></div>
+        <div id="errorBox" class="error-box" hidden></div>
+      </section>
+
+      <section class="artifact-card">
+        <div class="artifact-toolbar">
+          <div class="segmented" role="tablist" aria-label="Output mode">
+            <button id="rawModeBtn" class="active">Raw TSV</button>
+            <button id="previewModeBtn">Excel Preview</button>
+          </div>
+          <input id="searchInput" type="search" placeholder="Search artifact" aria-label="Search artifact">
+          <button id="wrapBtn">Word Wrap</button>
+          <button id="copyBtn">Copy TSV</button>
+          <button id="downloadTsvBtn">Download TSV</button>
+          <button id="downloadCsvBtn">Download CSV</button>
+          <button id="copyNoHeaderBtn">Copy Without Header</button>
         </div>
-        <ul id="blocked-sites-list" class="site-list"></ul>
+        <div id="artifactViewer" class="artifact-viewer" aria-label="TSV artifact output"></div>
+        <div id="excelPreview" class="excel-preview" hidden></div>
       </section>
-
-      <p id="status" role="status"></p>
     </main>
-
-    <script type="module" src="popup.js"></script>
-  </body>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
 </html>
