@@ -1,85 +1,46 @@
-# Focus Extension (Manifest V3)
+# QA Test Case TSV Converter
 
-Focus Extension helps users stay on task with timed focus sessions, grayscale mode, and both default + custom blocked sites.
+A local-only Chrome Extension (Manifest V3) that converts plain-text QA test cases into spreadsheet-ready TSV or CSV.
 
-## Folder structure
+## Install as an unpacked extension
 
-```text
-focus-mode/
-├── manifest.json
-├── domains.js
-├── utils.js
-├── background.js
-├── content.js
-├── popup.html
-├── popup.css
-├── popup.js
-├── focus.html
-├── focus.css
-├── focus.js
-└── README.md
-```
-
-## How it works
-
-### 1) Focus sessions
-
-- The popup lets users enter a task and session duration in minutes.
-- Starting a session stores this state in `chrome.storage.local`:
-
-```js
-{
-  isFocusActive: true,
-  currentTask: '...',
-  sessionStartTime: 1710000000000,
-  sessionDuration: 25,
-  settings: { grayscaleEnabled: true },
-  userBlockedDomains: []
-}
-```
-
-- The background service worker schedules an alarm for session expiration.
-- If a user visits a blocked URL while focus is active, they are redirected to `focus.html?blockedUrl=...`.
-- Session state persists across browser restarts.
-
-### 2) Grayscale toggle
-
-- Popup includes **Enable Grayscale** checkbox.
-- Toggling updates storage and instantly broadcasts state to all open tabs.
-- `content.js` applies/removes:
-
-```css
-html { filter: grayscale(100%) !important; }
-```
-
-### 3) Custom blocked sites
-
-- Popup includes input + list for custom blocked patterns.
-- Users can add/remove domains or host/path entries (for example, `example.com` or `example.com/feed`).
-- Updates are persisted immediately and enforced during active sessions.
-
-### Blocking behavior details
-
-- Uses default distracting domains from `domains.js` plus user patterns.
-- Applies matching on host and optional path prefix.
-- Ignores unsupported/unsafe URLs (`chrome://`, `chrome-extension://`, `about:`).
-- Prevents redirect loops by skipping `focus.html`.
-
-## Load in Chrome
-
-1. Open `chrome://extensions`.
+1. Open Chrome and go to `chrome://extensions`.
 2. Enable **Developer mode**.
 3. Click **Load unpacked**.
-4. Select this folder: `/workspace/focus-mode`.
-5. Pin the extension (optional) and open the popup.
+4. Select this project folder.
+5. Pin **QA Test Case TSV Converter** from the Extensions menu.
 
-## Step-by-step testing guide
+## Usage
 
-1. In popup, enter task + duration and click **Start Session**.
-2. Try opening a default blocked site (e.g., `youtube.com`) and verify redirect to `focus.html`.
-3. In popup, enable/disable **Enable Grayscale** and verify all tabs update instantly.
-4. Add a custom blocked site (e.g., `github.com/explore`) and verify it appears in the list.
-5. While session is active, navigate to the custom blocked site and verify redirection.
-6. Click **End Focus Session** in popup (or on `focus.html`) and verify access is restored.
-7. Start a session, close/reopen Chrome, and verify the session remains active until timeout.
+1. Click the extension icon.
+2. Upload a `.txt` file, drag and drop one into the upload area, or click **Paste Text**.
+3. Click **Convert** or press `Ctrl + Enter`.
+4. Review validation counts and inspect the TSV in the Artifact Viewer.
+5. Switch to **Excel Preview** to edit parsed cells before exporting.
+6. Use **Copy TSV**, **Download TSV**, **Download CSV**, or **Copy Without Header**.
 
+## Supported input format
+
+Each record must start with an ID such as `TC-1491`. Text after the ID and before the first numbered step becomes **Test Case**. Numbered lines beginning with `1.`, `2.`, `3.` become **Steps**. Text after the last numbered step and before `P1`, `P2`, or `P3` becomes **Expected Result**. Priority is exported as **Priority** and **Status** is intentionally blank.
+
+The parser tolerates wrapped text, inconsistent spacing, tabs, extra blank lines, Windows newlines, Unix newlines, and records written mostly on one line.
+
+## Keyboard shortcuts
+
+- `Ctrl + O` opens the file picker.
+- `Ctrl + Enter` converts the current input.
+- `Ctrl + Shift + C` copies TSV.
+- `Ctrl + F` focuses artifact search.
+- `Ctrl + S` downloads TSV.
+
+## Screenshots
+
+Add screenshots here after loading the extension locally:
+
+- Upload and conversion view
+- Raw TSV Artifact Viewer
+- Excel Preview editing mode
+
+## Privacy
+
+All parsing, previewing, copying, and downloading runs locally in Chrome. The extension has no backend, no API calls, no AI calls, and no external libraries.
